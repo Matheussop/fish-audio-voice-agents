@@ -1,2 +1,0 @@
-# trecho para o ~/.codex/config.toml
-notify = ["node", "C:/caminho/para/fish-audio-voice-agents/hook.js", "codex"]
