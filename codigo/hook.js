@@ -23,12 +23,16 @@ function ultimaRespostaDoClaude(transcript) {
   return ''
 }
 
-const aviso =
-  origem === 'codex'
+const aviso = {
+  ...(origem === 'codex'
     ? { origem, tipo: 'fim', texto: evento['last-assistant-message'] ?? '' }
     : evento.hook_event_name === 'Notification'
       ? { origem, tipo: evento.notification_type === 'idle_prompt' ? 'esperando' : 'permissao', texto: evento.message ?? '' }
-      : { origem, tipo: 'fim', texto: evento.last_assistant_message ?? ultimaRespostaDoClaude(evento.transcript_path) }
+      : { origem, tipo: 'fim', texto: evento.last_assistant_message ?? ultimaRespostaDoClaude(evento.transcript_path) }),
+  // para o voice-companion saber a qual sessão responder
+  sessao: origem === 'codex' ? evento['thread-id'] : evento.session_id,
+  cwd: evento.cwd,
+}
 
 // o hook roda síncrono, então a fala sai em outro processo e o agente segue na hora
 spawn(process.execPath, [path.join(pasta, 'aviso.js'), JSON.stringify(aviso)], {

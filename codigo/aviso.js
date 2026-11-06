@@ -1,7 +1,17 @@
 import { falar } from './fala.js'
 import { resumir } from './resumo.js'
 
-const { origem, tipo, texto } = JSON.parse(process.argv[2])
+const { origem, tipo, texto, sessao, cwd } = JSON.parse(process.argv[2])
+
+// avisa o voice-companion (~/Documents/Projetos/voice-companion), se estiver aberto; só localhost
+function companheiro(rota, dados) {
+  return fetch(`http://127.0.0.1:47321/${rota}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+    signal: AbortSignal.timeout(500),
+  }).catch(() => {})
+}
 
 function primeiraFrase(texto) {
   const limpo = texto.replace(/[`*#>_]/g, '').replace(/\s+/g, ' ').trim()
@@ -20,4 +30,9 @@ const frase =
     : (fixas[tipo] ?? primeiraFrase(texto))
 
 const voz = origem === 'codex' ? process.env.FISH_VOICE_CODEX || process.env.FISH_VOICE : process.env.FISH_VOICE
-await falar(frase, voz)
+await companheiro('aviso', { origem, tipo, frase, sessao, cwd })
+try {
+  await falar(frase, voz)
+} finally {
+  await companheiro('fala-fim', { sessao })
+}
