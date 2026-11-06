@@ -1,7 +1,16 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+// se o hook quebrar antes de chamar o aviso, fica registrado no mesmo log do aviso.js
+process.on('uncaughtException', (erro) => {
+  try {
+    appendFileSync(path.join(os.homedir(), 'Library/Logs/fish-audio-voice-agents.log'), `${new Date().toISOString()} ERRO hook: ${erro.message}\n`)
+  } catch {}
+  process.exit(0)
+})
 
 if (process.env.FALA_DENTRO) process.exit(0)
 // no Alethe o plugin de voz já fala o fim de cada vez; FALA_HOOKS_NO_ALETHE=1 liga os hooks mesmo assim
@@ -10,6 +19,18 @@ if (process.env.ALETHE_PLANNER && process.env.FALA_HOOKS_NO_ALETHE !== '1') proc
 const pasta = path.dirname(fileURLToPath(import.meta.url))
 const origem = process.argv[2] ?? 'claude'
 const evento = origem === 'codex' ? JSON.parse(process.argv[3]) : JSON.parse(readFileSync(0, 'utf8'))
+
+// você respondeu pelo terminal (ou a sessão acabou): o voice-companion tira a sessão da fila, sem fala
+if (['UserPromptSubmit', 'SessionEnd'].includes(evento.hook_event_name)) {
+  appendFileSync(path.join(os.homedir(), 'Library/Logs/fish-audio-voice-agents.log'), `${new Date().toISOString()} respondeu ${evento.hook_event_name} ${evento.session_id}\n`)
+  await fetch('http://127.0.0.1:47321/respondeu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessao: evento.session_id }),
+    signal: AbortSignal.timeout(300),
+  }).catch(() => {})
+  process.exit(0)
+}
 
 function ultimaRespostaDoClaude(transcript) {
   if (!transcript || !existsSync(transcript)) return ''

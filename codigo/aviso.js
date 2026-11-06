@@ -1,7 +1,18 @@
+import { appendFileSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { falar } from './fala.js'
 import { resumir } from './resumo.js'
 
 const { origem, tipo, texto, sessao, cwd } = JSON.parse(process.argv[2])
+
+// o aviso roda desanexado e sem saída; o log mostra quando uma fala falhou
+const LOG = path.join(os.homedir(), 'Library/Logs/fish-audio-voice-agents.log')
+function registrar(linha) {
+  try {
+    appendFileSync(LOG, `${new Date().toISOString()} ${linha}\n`)
+  } catch {}
+}
 
 // avisa o voice-companion (~/Documents/Projetos/voice-companion), se estiver aberto; só localhost
 function companheiro(rota, dados) {
@@ -33,6 +44,9 @@ const voz = origem === 'codex' ? process.env.FISH_VOICE_CODEX || process.env.FIS
 await companheiro('aviso', { origem, tipo, frase, sessao, cwd })
 try {
   await falar(frase, voz)
+  registrar(`ok ${origem} ${tipo}: ${frase.slice(0, 80)}`)
+} catch (erro) {
+  registrar(`ERRO ${origem} ${tipo}: ${erro.message}`)
 } finally {
   await companheiro('fala-fim', { sessao })
 }
