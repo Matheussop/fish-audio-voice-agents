@@ -18,7 +18,21 @@ if (process.env.ALETHE_PLANNER && process.env.FALA_HOOKS_NO_ALETHE !== '1') proc
 
 const pasta = path.dirname(fileURLToPath(import.meta.url))
 const origem = process.argv[2] ?? 'claude'
-const evento = origem === 'codex' ? JSON.parse(process.argv[3]) : JSON.parse(readFileSync(0, 'utf8'))
+// o notify do Codex manda o JSON como argumento; os hooks (Claude Code e hooks.json do Codex) mandam pelo stdin
+const evento = process.argv[3] ? JSON.parse(process.argv[3]) : JSON.parse(readFileSync(0, 'utf8'))
+
+// o Codex abre uma conversa interna para dar título à sessão e o notify dispara para ela também,
+// com a resposta {"title":"..."}: não é um aviso para você
+if (origem === 'codex' && ehTituloInterno(evento['last-assistant-message'])) process.exit(0)
+
+function ehTituloInterno(texto) {
+  try {
+    const dado = JSON.parse(texto ?? '')
+    return typeof dado === 'object' && dado !== null && 'title' in dado
+  } catch {
+    return false
+  }
+}
 
 // você respondeu pelo terminal (ou a sessão acabou): o voice-companion tira a sessão da fila, sem fala
 if (['UserPromptSubmit', 'SessionEnd'].includes(evento.hook_event_name)) {

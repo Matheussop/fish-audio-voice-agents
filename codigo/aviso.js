@@ -1,4 +1,4 @@
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { falar } from './fala.js'
@@ -12,6 +12,18 @@ function registrar(linha) {
   try {
     appendFileSync(LOG, `${new Date().toISOString()} ${linha}\n`)
   } catch {}
+}
+
+// voz silenciada: o arquivo existe e guarda até quando (ms desde 1970); vazio ou 0 = até reativar.
+// O menu do voice-companion liga e desliga; funciona mesmo com o app fechado.
+const SILENCIO = path.join(os.homedir(), '.local/share/fish-audio-voice-agents/silenciado')
+function silenciado() {
+  try {
+    const ate = Number(readFileSync(SILENCIO, 'utf8').trim())
+    return !ate || Date.now() < ate
+  } catch {
+    return false
+  }
 }
 
 // avisa o voice-companion (~/Documents/Projetos/voice-companion), se estiver aberto; só localhost
@@ -43,8 +55,11 @@ const frase =
 const voz = origem === 'codex' ? process.env.FISH_VOICE_CODEX || process.env.FISH_VOICE : process.env.FISH_VOICE
 await companheiro('aviso', { origem, tipo, frase, sessao, cwd })
 try {
-  await falar(frase, voz)
-  registrar(`ok ${origem} ${tipo}: ${frase.slice(0, 80)}`)
+  if (silenciado()) registrar(`silenciado ${origem} ${tipo}: ${frase.slice(0, 80)}`)
+  else {
+    await falar(frase, voz)
+    registrar(`ok ${origem} ${tipo}: ${frase.slice(0, 80)}`)
+  }
 } catch (erro) {
   registrar(`ERRO ${origem} ${tipo}: ${erro.message}`)
 } finally {
