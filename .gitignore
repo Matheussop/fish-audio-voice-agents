@@ -3,3 +3,4 @@ node_modules/
 *.wav
 *.mp3
 *.m4a
+voz.env
