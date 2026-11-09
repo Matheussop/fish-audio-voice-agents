@@ -4,7 +4,7 @@ import path from 'node:path'
 import { falar } from './fala.js'
 import { resumir } from './resumo.js'
 
-const { origem, tipo, texto, sessao, cwd } = JSON.parse(process.argv[2])
+const { origem, tipo, texto, sessao, cwd, app } = JSON.parse(process.argv[2])
 
 // o aviso roda desanexado e sem saída; o log mostra quando uma fala falhou
 const LOG = path.join(os.homedir(), 'Library/Logs/fish-audio-voice-agents.log')
@@ -53,7 +53,7 @@ const frase =
     : (fixas[tipo] ?? primeiraFrase(texto))
 
 const voz = origem === 'codex' ? process.env.FISH_VOICE_CODEX || process.env.FISH_VOICE : process.env.FISH_VOICE
-await companheiro('aviso', { origem, tipo, frase, sessao, cwd })
+await companheiro('aviso', { origem, tipo, frase, sessao, cwd, app })
 try {
   if (silenciado()) registrar(`silenciado ${origem} ${tipo}: ${frase.slice(0, 80)}`)
   else {

@@ -21,17 +21,25 @@ const origem = process.argv[2] ?? 'claude'
 // o notify do Codex manda o JSON como argumento; os hooks (Claude Code e hooks.json do Codex) mandam pelo stdin
 const evento = process.argv[3] ? JSON.parse(process.argv[3]) : JSON.parse(readFileSync(0, 'utf8'))
 
-// o Codex abre uma conversa interna para dar título à sessão e o notify dispara para ela também,
-// com a resposta {"title":"..."}: não é um aviso para você
-if (origem === 'codex' && ehTituloInterno(evento['last-assistant-message'])) process.exit(0)
+// o Codex abre conversas internas (título da sessão, sugestões, exclusões) e o notify dispara para elas também,
+// com uma resposta só em JSON, como {"title":"..."} ou {"exclude":[]}: não é um aviso para você
+if (origem === 'codex' && ehConversaInterna(evento['last-assistant-message'])) process.exit(0)
 
-function ehTituloInterno(texto) {
+function ehConversaInterna(texto) {
   try {
     const dado = JSON.parse(texto ?? '')
-    return typeof dado === 'object' && dado !== null && 'title' in dado
+    return typeof dado === 'object' && dado !== null
   } catch {
     return false
   }
+}
+
+// app que roda a sessão, para o voice-companion saber se você está nele e para onde levar no clique.
+// O macOS passa __CFBundleIdentifier aos processos abertos por um app (Warp, Claude desktop);
+// o Codex desktop (ChatGPT.app) não passa, mas marca o ambiente com CODEX_INTERNAL_ORIGINATOR_OVERRIDE
+function appDeOrigem() {
+  if (process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE === 'Codex' || process.env.CODEX_APP_RUNTIME_CLI_PATH) return 'com.openai.codex'
+  return process.env.__CFBundleIdentifier ?? ''
 }
 
 // você respondeu pelo terminal (ou a sessão acabou): o voice-companion tira a sessão da fila, sem fala
@@ -67,6 +75,7 @@ const aviso = {
   // para o voice-companion saber a qual sessão responder
   sessao: origem === 'codex' ? evento['thread-id'] : evento.session_id,
   cwd: evento.cwd,
+  app: appDeOrigem(),
 }
 
 // o hook roda síncrono, então a fala sai em outro processo e o agente segue na hora
