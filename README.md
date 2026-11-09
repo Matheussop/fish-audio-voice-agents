@@ -33,7 +33,10 @@ Todo o código fica em [`codigo/`](codigo). As pastas numeradas explicam cada pa
 | `resumo.js` | Opcional: resume a resposta com o Claude Haiku antes de falar (`FALA_RESUMO=1`) |
 | `fala-cmd.js` e `fala.cmd` | Roda qualquer comando e avisa em voz alta se passou ou quebrou (`fala npm test`) |
 | `clonar.js` | Cria uma voz clonada pela API a partir de um áudio seu |
-| `.env.example` | Modelo do `.env` com a chave e as vozes |
+| `codex_notify.py` | Notify do Codex que chama o hook de voz e preserva o notify do Computer Use ([`04-codex`](04-codex)) |
+| `.env.example` | Modelo do `.env` com a chave e as vozes (o `voz.env` manda sobre elas nos hooks) |
+
+Fora de `codigo/`, na raiz, ficam dois arquivos locais que não vão para o Git: `voz.env`, com a voz dos hooks ([`01-chave-e-voz`](01-chave-e-voz)), e `silenciado`, criado quando a voz está silenciada.
 
 ## Requisitos
 
@@ -52,3 +55,14 @@ node fala.js "Terminei a tarefa, pode conferir."
 ```
 
 Se ouviu a voz, siga pra [`03-hook-claude-code`](03-hook-claude-code).
+
+## Voice-companion
+
+Este fork também avisa o [voice-companion](https://github.com/Matheussop/voice-companion), um robô flutuante para macOS que mostra os avisos e leva você à sessão que espera resposta. Ele é opcional: com o app fechado, os avisos só falham em silêncio e a voz segue normal.
+
+- O `aviso.js` manda a frase, a sessão, a pasta e o **app de origem** para `127.0.0.1:47321`. O `hook.js` descobre o app pelo `__CFBundleIdentifier` que o macOS passa aos processos (Warp, Claude desktop); o Codex desktop, dentro do app do ChatGPT, não passa essa variável e é reconhecido por `CODEX_INTERNAL_ORIGINATOR_OVERRIDE=Codex`.
+- Em `UserPromptSubmit` e `SessionEnd`, o `hook.js` avisa que você respondeu, sem falar. No Claude Code, ele entra nesses dois eventos do `settings.json`; no Codex, no `hooks.json` ([`04-codex`](04-codex)).
+- Se o arquivo `silenciado` existir na raiz, o `aviso.js` não fala. O conteúdo é até quando, em milissegundos desde 1970; vazio ou `0` vale até apagar o arquivo. O menu do voice-companion cria e apaga esse arquivo.
+- Todo aviso e toda resposta detectada ficam em `~/Library/Logs/fish-audio-voice-agents.log`.
+
+O chat normal do app do ChatGPT não tem hooks, então só as conversas do Codex dentro dele avisam.
